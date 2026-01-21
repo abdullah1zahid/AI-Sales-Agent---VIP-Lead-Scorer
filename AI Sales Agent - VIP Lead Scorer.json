@@ -1,0 +1,494 @@
+{
+  "name": "AI Sales Agent - VIP Lead Scorer",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -544,
+        -80
+      ],
+      "id": "bfa16db5-c0a2-4dd7-a397-70f38131daee",
+      "name": "Daily Run (9:00 AM)"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA",
+          "mode": "list",
+          "cachedResultName": "VIP Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1455428813,
+          "mode": "list",
+          "cachedResultName": "گوگل شیٹ ڈیٹا اور n8n کنکشن",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA/edit#gid=1455428813"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "New"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -320,
+        -80
+      ],
+      "id": "e8ed9f4b-f0da-48b6-9a19-2637023d4fea",
+      "name": "Fetch New Leads",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g2VIqSa88pb2GDRq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Analyze this lead:\nName: {{ $json.Name }}\nCompany: {{ $json.Company }}\nTitle: {{ $json.Title }}\n\nTask:\n1. Give a score from 1-10 based on buying potential.\n2. If Title contains 'CEO', 'Director', or 'Manager', give 8-10.\n3. Write a short, professional, and personalized cold email to this person offering our \"AI Automation Services\".\n4. Keep the email under 100 words.\n\nIMPORTANT:\n- Sign off the email exactly like this:\n  \"Best regards,\n  Abdullah Zahid\n  AI Automation Expert\"\n\n- Return ONLY valid JSON:\n{\n  \"score\": 10,\n  \"reason\": \"High profile title\",\n  \"email_draft\": \"Subject: ... \\n\\nHi [Name], ...\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "6c8be99f-588f-4d7d-b91a-e3b74edeac75",
+      "name": "AI Brain (Score + Draft Email)",
+      "credentials": {
+        "openAiApi": {
+          "id": "Soxcnc9nqzCSGJbF",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Get Sheet Data\nconst sheetData = $('Fetch New Leads').item.json;\n\n// 2. Get AI Response\nconst aiItem = $input.item.json;\nlet aiText = \"\";\n\nif (aiItem.message && aiItem.message.content) {\n    aiText = aiItem.message.content;\n} else if (aiItem.output && aiItem.output[0]) {\n    aiText = aiItem.output[0].content[0].text;\n} else if (aiItem.text) {\n    aiText = aiItem.text;\n}\n\n// 3. Clean & Parse JSON\nlet aiData = { score: 0, reason: \"Error\", email_draft: \"\" };\n\nif (typeof aiText === 'string') {\n    const cleanJson = aiText.replace(/```json/g, '').replace(/```/g, '').trim();\n    try {\n        aiData = JSON.parse(cleanJson);\n    } catch (e) {\n        aiData = { score: 0, reason: \"Error parsing AI\", email_draft: \"Error\" };\n    }\n}\n\n// 4. Merge & Return\nreturn {\n    ...sheetData,\n    ...aiData\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -80
+      ],
+      "id": "1cb63a7f-64de-423e-809c-d99483b48089",
+      "name": "Data Formatter"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 8,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "id": "cef066d3-b4a1-4d52-8a00-8b492dc16285"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0c1a6483-2243-493b-8d2f-797f103c42f7",
+                    "leftValue": "={{ $json.score }}",
+                    "rightValue": 8,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -80
+      ],
+      "id": "3f986f1b-9c5b-45d3-b8e9-50bd4efa84f0",
+      "name": "VIP Filter (Score >= 8)"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "871047152769084",
+        "recipientPhoneNumber": "+923043956956",
+        "textBody": "=🚨 *New VIP Lead Alert!*  👤 *Name:* {{ $json.Name }} 🏢 *Role:* {{ $json.Title }} at {{ $json.Company }} ⭐ *Score:* {{ $json.score }}/10 💡 *Why:* {{ $json.reason }}  📞 *Call Now:* {{ $json.Phone }} 📝 *Draft Email:*\n{{ $json.email_draft }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        16
+      ],
+      "id": "f7065dfe-5c62-4ace-a959-c20fe7325dc7",
+      "name": "Notify Admin (WhatsApp)",
+      "webhookId": "9c749949-5d94-4f99-86eb-51e4041610be",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VPL3A66yzx6LQivO",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA",
+          "mode": "list",
+          "cachedResultName": "VIP Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1455428813,
+          "mode": "list",
+          "cachedResultName": "گوگل شیٹ ڈیٹا اور n8n کنکشن",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1iVoQieiGCl3wRmYBSZSbQw8x6Y_VD6GGl7rUU47PVeA/edit#gid=1455428813"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Processed",
+            "Score": "={{ $json.score }}",
+            "AI_Comment": "={{ $json.reason }}",
+            "Email": "={{ $json.Email }}",
+            "row_number": 0,
+            "Email_Draft": "={{ $json.email_draft }}"
+          },
+          "matchingColumns": [
+            "Email"
+          ],
+          "schema": [
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI_Comment",
+              "displayName": "AI_Comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email_Draft",
+              "displayName": "Email_Draft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        704,
+        -176
+      ],
+      "id": "8c374954-28b6-4aaa-8072-553eb6272b2b",
+      "name": "Update CRM Status",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "g2VIqSa88pb2GDRq",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 📥 Step 1: Data Ingestion\n**Function:** Fetch raw leads from Google Sheets.\n**Schedule:** Runs daily at 9:00 AM.\n**Condition:** Checks for leads with status \"New\".",
+        "height": 320,
+        "width": 368,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -576,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "312d4745-bbcd-4434-8f87-f68405e0569b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 🧠 Step 2: AI Analysis\n**Model:** GPT-4o Mini\n**Tasks:**\n1. **Score:** Assigns buying potential (1-10).\n2. **Draft:** Writes a personalized cold email.\n3. **Merge:** Code node combines AI data with customer info.",
+        "height": 320,
+        "width": 368,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -176,
+        -256
+      ],
+      "typeVersion": 1,
+      "id": "2cc5b3f7-14af-40de-9e18-a6da8a85ac4f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## ⚡ Step 3: Routing & Action\n**Logic (Switch Node):**\n- **VIP (Score >= 8):**\n  - ✅ Send WhatsApp Alert\n  - ✅ Update Sheet (Status: Processed)\n- **Normal (Score < 8):**\n  - ❌ No Message\n  - ✅ Update Sheet (Status: Processed)",
+        "height": 512,
+        "width": 640,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        232,
+        -336
+      ],
+      "typeVersion": 1,
+      "id": "515df40e-2b3f-4e66-a80b-678f2ecba41e",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Run (9:00 AM)": {
+      "main": [
+        [
+          {
+            "node": "Fetch New Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch New Leads": {
+      "main": [
+        [
+          {
+            "node": "AI Brain (Score + Draft Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Brain (Score + Draft Email)": {
+      "main": [
+        [
+          {
+            "node": "Data Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Formatter": {
+      "main": [
+        [
+          {
+            "node": "VIP Filter (Score >= 8)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VIP Filter (Score >= 8)": {
+      "main": [
+        [
+          {
+            "node": "Notify Admin (WhatsApp)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update CRM Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update CRM Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Admin (WhatsApp)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d08b00f5-eeeb-47d5-8482-d100ddbc9dee",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bc774d01a36b1358fe79243b064579e1db576ef896fd14a4bb69983aaa2dfc31"
+  },
+  "id": "5HV6stzghm_C7xSpKtZe0",
+  "tags": [
+    {
+      "name": "#Sales  #AI  #WhatsApp",
+      "id": "n5EaQ0dtvO8YLizz",
+      "updatedAt": "2026-01-21T18:43:29.975Z",
+      "createdAt": "2026-01-21T18:43:29.975Z"
+    },
+    {
+      "name": "#Production",
+      "id": "JZeGyAgFk26pfneP",
+      "updatedAt": "2026-01-21T18:44:04.926Z",
+      "createdAt": "2026-01-21T18:44:04.926Z"
+    }
+  ]
+}
